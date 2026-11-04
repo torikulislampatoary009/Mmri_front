@@ -7,3 +7,5 @@ No build step.
 3. If the backend is not at http://localhost:5000, edit `config.js`.
 
 Features: drag-and-drop upload, sensitivity cut-off, Original / Overlay / Mask-only views, mask opacity slider, tumor-area stats, downloadable overlay, saved history with delete.
+
+Deployed: host this folder on any static host and set the Render address in `config.js`. See backend/DEPLOY.md.

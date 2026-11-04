@@ -1,4 +1,5 @@
 const API = (window.API_BASE || "http://localhost:5000").replace(/\/$/, "");
+const abs = (u) => (/^(data|blob):/.test(u) ? u : API + u);
 const $ = (id) => document.getElementById(id);
 
 const el = {
@@ -29,18 +30,37 @@ async function api(path, opts) {
 
 /* ---------- server status ---------- */
 async function checkServer() {
-  try {
-    const h = await api("/api/health");
-    el.status.className = "status ok";
-    const d = h.model && h.model.val_dice;
-    el.status.textContent = h.demo_mode ? "Server connected, demo mode"
-      : "Server connected, model loaded" + (d ? ` (validation Dice ${Number(d).toFixed(3)})` : "");
-    el.banner.hidden = !h.demo_mode;
-  } catch (e) {
-    el.status.className = "status bad";
-    el.status.textContent = "Cannot reach the server at " + API;
+  // Free hosting sleeps when idle and can take a minute to wake, so retry before giving up.
+  for (let i = 0; i < 8; i++) {
+    try {
+      const h = await api("/api/health");
+      el.status.className = "status ok";
+      const d = h.model && h.model.val_dice;
+      el.status.textContent = h.demo_mode ? "Server connected, demo mode"
+        : "Server connected, model loaded" + (d ? ` (validation Dice ${Number(d).toFixed(3)})` : "");
+      el.banner.hidden = !h.demo_mode;
+      loadHistory();
+      return;
+    } catch (e) {
+      el.status.className = "status";
+      el.status.textContent = i < 7 ? "Waking the server, this can take up to a minute…" : "";
+      if (i === 7) { el.status.className = "status bad"; el.status.textContent = "Cannot reach the server at " + API; return; }
+      await new Promise((r) => setTimeout(r, 8000));
+    }
   }
 }
+
+el.download.addEventListener("click", async (e) => {
+  e.preventDefault();
+  const u = el.download.dataset.url;
+  if (!u) return;
+  try {
+    const blob = await (await fetch(u)).blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = "overlay.png"; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  } catch (_) { window.open(u, "_blank"); }
+});
 
 /* ---------- choosing a file ---------- */
 function setFile(f) {
@@ -84,11 +104,11 @@ el.run.addEventListener("click", async () => {
 function showImages(r, previewOnly = false) {
   el.placeholder.hidden = true;
   el.base.hidden = false;
-  el.base.src = r.image_url.startsWith("blob:") ? r.image_url : API + r.image_url;
-  el.layer.dataset.src = r.mask_url ? API + r.mask_url : "";
+  el.base.src = abs(r.image_url);
+  el.layer.dataset.src = r.mask_url ? abs(r.mask_url) : "";
   el.layer.src = el.layer.dataset.src;
   el.download.hidden = !r.overlay_url;
-  if (r.overlay_url) { el.download.href = API + r.overlay_url; el.download.setAttribute("download", "overlay.png"); }
+  el.download.dataset.url = r.overlay_url ? abs(r.overlay_url) : "";
   if (previewOnly) { el.stats.hidden = true; setView("original"); } else applyView();
 }
 
@@ -136,7 +156,8 @@ async function loadHistory() {
       li.className = "item";
       const open = document.createElement("button");
       open.className = "open"; open.dataset.id = r.id;
-      open.innerHTML = `<img alt="" src="${API}${r.image_url}"><span><span class="name"></span><span class="meta"></span></span>`;
+      open.innerHTML = `<img alt=""><span><span class="name"></span><span class="meta"></span></span>`;
+      open.querySelector("img").src = abs(r.thumb_url || r.image_url);
       open.querySelector(".name").textContent = r.original_name;
       open.querySelector(".meta").textContent = `${Number(r.tumor_percent).toFixed(2)}% tumor · ${new Date(r.created_at).toLocaleString()}`;
       open.addEventListener("click", () => show(r));
@@ -156,4 +177,3 @@ async function loadHistory() {
 }
 
 checkServer();
-loadHistory();
