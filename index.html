@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brain MRI tumor segmentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Brain MRI tumor segmentation</h1>
+  <p id="status" class="status" role="status">Checking server…</p>
+</header>
+
+<div id="demo-banner" class="banner" hidden>
+  Demo mode: no trained model was found on the server, so results come from a simple brightness filter and are not a medical result.
+</div>
+
+<main class="layout">
+  <aside class="side">
+    <section class="panel">
+      <h2>New scan</h2>
+      <label id="drop" class="drop" tabindex="0">
+        <input id="file" type="file" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp" hidden>
+        <span id="drop-text">Drop an MRI slice here or click to choose</span>
+        <small>PNG, JPG, TIF or BMP, up to 25 MB</small>
+      </label>
+      <div class="field">
+        <label for="thr">Sensitivity cut-off <output id="thr-out">0.50</output></label>
+        <input id="thr" type="range" min="0.05" max="0.95" step="0.05" value="0.5">
+        <small>Lower finds more tumor pixels, higher is stricter.</small>
+      </div>
+      <button id="run" class="primary" disabled>Segment scan</button>
+      <p id="msg" class="msg" role="alert" hidden></p>
+    </section>
+
+    <section class="panel">
+      <h2>Previous scans</h2>
+      <ul id="history" class="history"><li class="empty">No scans yet. Upload one to get started.</li></ul>
+    </section>
+  </aside>
+
+  <section class="viewer">
+    <div class="tabs" role="tablist" aria-label="View">
+      <button role="tab" data-view="original" aria-selected="true">Original</button>
+      <button role="tab" data-view="overlay" aria-selected="false">Overlay</button>
+      <button role="tab" data-view="mask" aria-selected="false">Mask only</button>
+    </div>
+
+    <div class="stage" id="stage">
+      <p id="placeholder" class="placeholder">Your scan and the predicted tumor region appear here.</p>
+      <img id="img-base" alt="MRI slice" hidden>
+      <img id="img-layer" alt="Predicted tumor mask" hidden>
+    </div>
+
+    <div class="controls">
+      <label for="opacity">Mask opacity <output id="op-out">60%</output></label>
+      <input id="opacity" type="range" min="0" max="100" value="60">
+      <a id="download" class="link" hidden download>Download overlay</a>
+    </div>
+
+    <dl class="stats" id="stats" hidden>
+      <div><dt>Tumor area</dt><dd id="s-pct">–</dd></div>
+      <div><dt>Tumor pixels</dt><dd id="s-px">–</dd></div>
+      <div><dt>Image size</dt><dd id="s-size">–</dd></div>
+      <div><dt>Inference time</dt><dd id="s-ms">–</dd></div>
+    </dl>
+    <p class="note">Research prototype. Not for diagnosis or treatment decisions.</p>
+  </section>
+</main>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
