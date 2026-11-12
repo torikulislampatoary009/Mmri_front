@@ -38,7 +38,6 @@ async function checkServer() {
       const d = h.model && h.model.val_dice;
       el.status.textContent = h.demo_mode ? "Server connected, demo mode"
         : "Server connected, model loaded" + (d ? ` (validation Dice ${Number(d).toFixed(3)})` : "");
-      el.banner.hidden = !h.demo_mode;
       loadHistory();
       return;
     } catch (e) {
