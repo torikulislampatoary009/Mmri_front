@@ -32,20 +32,24 @@ async function api(path, opts) {
 async function checkServer() {
   // Free hosting sleeps when idle and can take a minute to wake, so retry before giving up.
   for (let i = 0; i < 8; i++) {
+    let h = null;
     try {
-      const h = await api("/api/health");
-      el.status.className = "status ok";
-      const d = h.model && h.model.val_dice;
-      el.status.textContent = h.demo_mode ? "Server connected, demo mode"
-        : "Server connected, model loaded" + (d ? ` (validation Dice ${Number(d).toFixed(3)})` : "");
-      loadHistory();
-      return;
+      h = await api("/api/health");          // only the network call decides "reachable"
     } catch (e) {
       el.status.className = "status";
       el.status.textContent = i < 7 ? "Waking the server, this can take up to a minute…" : "";
       if (i === 7) { el.status.className = "status bad"; el.status.textContent = "Cannot reach the server at " + API; return; }
       await new Promise((r) => setTimeout(r, 8000));
+      continue;
     }
+    // Server answered: a UI problem here must never be reported as "cannot reach the server".
+    el.status.className = "status ok";
+    const d = h && h.model && h.model.val_dice;
+    el.status.textContent = h.demo_mode ? "Server connected, demo mode"
+      : "Server connected, model loaded" + (d ? ` (validation Dice ${Number(d).toFixed(3)})` : "");
+    if (el.banner) el.banner.hidden = !h.demo_mode;   // banner element is optional
+    loadHistory();
+    return;
   }
 }
 
