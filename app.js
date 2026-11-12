@@ -32,24 +32,21 @@ async function api(path, opts) {
 async function checkServer() {
   // Free hosting sleeps when idle and can take a minute to wake, so retry before giving up.
   for (let i = 0; i < 8; i++) {
-    let h = null;
     try {
-      h = await api("/api/health");          // only the network call decides "reachable"
+      const h = await api("/api/health");
+      el.status.className = "status ok";
+      const d = h.model && h.model.val_dice;
+      el.status.textContent = h.demo_mode ? "Server connected, demo mode"
+        : "Server connected, model loaded" + (d ? ` (validation Dice ${Number(d).toFixed(3)})` : "");
+      el.banner.hidden = !h.demo_mode;
+      loadHistory();
+      return;
     } catch (e) {
       el.status.className = "status";
       el.status.textContent = i < 7 ? "Waking the server, this can take up to a minute…" : "";
       if (i === 7) { el.status.className = "status bad"; el.status.textContent = "Cannot reach the server at " + API; return; }
       await new Promise((r) => setTimeout(r, 8000));
-      continue;
     }
-    // Server answered: a UI problem here must never be reported as "cannot reach the server".
-    el.status.className = "status ok";
-    const d = h && h.model && h.model.val_dice;
-    el.status.textContent = h.demo_mode ? "Server connected, demo mode"
-      : "Server connected, model loaded" + (d ? ` (validation Dice ${Number(d).toFixed(3)})` : "");
-    if (el.banner) el.banner.hidden = !h.demo_mode;   // banner element is optional
-    loadHistory();
-    return;
   }
 }
 
@@ -65,18 +62,31 @@ el.download.addEventListener("click", async (e) => {
   } catch (_) { window.open(u, "_blank"); }
 });
 
-/* ---------- choosing a file ---------- */
-function setFile(f) {
+/* ---------- choosing files ---------- */
+let mode = "single";   // single | seq
+const picked = { single: null, pre: null, flair: null, post: null };
+
+function refreshRun() { el.run.disabled = mode === "single" ? !picked.single : !picked.flair; }
+function setFile(f, slot = "single") {
   if (!f) return;
-  chosen = f;
-  el.dropText.textContent = f.name;
-  el.run.disabled = false;
+  picked[slot] = f;
   say("");
-  if (/\.(png|jpe?g|bmp)$/i.test(f.name)) {   // browsers can't preview TIFF; it shows after upload
+  if (slot === "single") el.dropText.textContent = f.name;
+  if ((slot === "single" || slot === "flair") && /\.(png|jpe?g|bmp)$/i.test(f.name)) {   // TIFF can't be previewed by browsers
     showImages({ image_url: URL.createObjectURL(f), overlay_url: null, mask_url: null }, true);
   }
+  refreshRun();
 }
 el.file.addEventListener("change", () => setFile(el.file.files[0]));
+document.querySelectorAll("#seq-box input[type=file]").forEach((inp) =>
+  inp.addEventListener("change", () => setFile(inp.files[0], inp.dataset.slot)));
+document.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => {
+  mode = b.dataset.mode;
+  document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+  $("single-box").hidden = mode !== "single";
+  $("seq-box").hidden = mode !== "seq";
+  refreshRun();
+}));
 el.drop.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); el.file.click(); } });
 ["dragenter", "dragover"].forEach((t) => el.drop.addEventListener(t, (e) => { e.preventDefault(); el.drop.classList.add("over"); }));
 ["dragleave", "drop"].forEach((t) => el.drop.addEventListener(t, (e) => { e.preventDefault(); el.drop.classList.remove("over"); }));
@@ -85,21 +95,27 @@ el.thr.addEventListener("input", () => (el.thrOut.textContent = Number(el.thr.va
 
 /* ---------- running segmentation ---------- */
 el.run.addEventListener("click", async () => {
-  if (!chosen) return;
   const fd = new FormData();
-  fd.append("image", chosen);
+  if (mode === "single") {
+    if (!picked.single) return;
+    fd.append("image", picked.single);
+  } else {
+    if (!picked.flair) return;
+    ["pre", "flair", "post"].forEach((k) => picked[k] && fd.append(k, picked[k]));
+  }
   fd.append("threshold", el.thr.value);
   el.run.disabled = true; el.run.classList.add("busy"); el.run.textContent = "Segmenting…";
   say("");
   try {
     const r = await api("/api/predict", { method: "POST", body: fd });
     show(r);
-    if (!r.saved) say("Result not saved to history: " + (r.db_error || "database unavailable"), "info");
-    else loadHistory();
+    if (r.warning) say(r.warning, "info");
+    else if (!r.saved) say("Result not saved to history: " + (r.db_error || "database unavailable"), "info");
+    if (r.saved) loadHistory();
   } catch (e) {
     say(e.message);
   } finally {
-    el.run.disabled = false; el.run.classList.remove("busy"); el.run.textContent = "Segment scan";
+    el.run.classList.remove("busy"); el.run.textContent = "Segment scan"; refreshRun();
   }
 });
 

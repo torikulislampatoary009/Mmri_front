@@ -15,15 +15,31 @@
   <p id="status" class="status" role="status">Checking server…</p>
 </header>
 
+<div id="demo-banner" class="banner" hidden>
+  Demo mode: no trained model was found on the server, so results come from a simple brightness filter and are not a medical result.
+</div>
+
 <main class="layout">
   <aside class="side">
     <section class="panel">
       <h2>New scan</h2>
+      <div class="seg" role="tablist" aria-label="Input type">
+        <button type="button" data-mode="single" aria-selected="true">Single slice</button>
+        <button type="button" data-mode="seq" aria-selected="false">3 sequences</button>
+      </div>
+      <div id="single-box">
       <label id="drop" class="drop" tabindex="0">
         <input id="file" type="file" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp" hidden>
         <span id="drop-text">Drop an MRI slice here or click to choose</span>
-        <small>PNG, JPG, TIF or BMP, up to 25 MB</small>
+        <small>PNG, JPG, TIF or BMP, up to 10 MB. A 3-channel .tif from the Kaggle dataset also works here.</small>
       </label>
+      </div>
+      <div id="seq-box" hidden>
+        <p class="hint">Upload the same slice from each MRI sequence of one patient. FLAIR is required; a missing pre- or post-contrast image is filled with FLAIR.</p>
+        <label class="seqfile"><span>Pre-contrast</span><input type="file" data-slot="pre" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp"></label>
+        <label class="seqfile"><span>FLAIR (required)</span><input type="file" data-slot="flair" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp"></label>
+        <label class="seqfile"><span>Post-contrast</span><input type="file" data-slot="post" accept=".png,.jpg,.jpeg,.tif,.tiff,.bmp"></label>
+      </div>
       <div class="field">
         <label for="thr">Sensitivity cut-off <output id="thr-out">0.50</output></label>
         <input id="thr" type="range" min="0.05" max="0.95" step="0.05" value="0.5">
@@ -64,9 +80,7 @@
       <div><dt>Image size</dt><dd id="s-size">–</dd></div>
       <div><dt>Inference time</dt><dd id="s-ms">–</dd></div>
     </dl>
-    
     <p class="note">Research prototype. Not for diagnosis or treatment decisions.</p>
-    <p class="note">©Torikul Islam(242031009) </p>
   </section>
 </main>
 <script src="config.js"></script>
